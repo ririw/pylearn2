@@ -32,9 +32,9 @@ if __name__ == "__main__":
 
     # First we want to pull out small patches of the images, since it's easier
     # to train an RBM on these
-    pipeline.items.append(
-        preprocessing.ExtractPatches(patch_shape=(8, 8), num_patches=150000)
-    )
+    #pipeline.items.append(
+        #preprocessing.ExtractPatches(patch_shape=(8, 8), num_patches=150000)
+    #)
 
     # Next we contrast normalize the patches. The default arguments use the
     # same "regularization" parameters as those used in Adam Coates, Honglak
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     # in the process of being re-loaded into a running process).
     # The dataset object itself is stored as a pickle file.
     path = pylearn2.__path__[0]
-    train_example_path = os.path.join(path, 'scripts', 'tutorials', 'grbm_smd')
+    train_example_path = os.path.join(path, 'scripts', 'tutorials', 'cifar_ae')
     train.use_design_loc(os.path.join(train_example_path,
                                       'cifar10_preprocessed_train_design.npy'))
 

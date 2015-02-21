@@ -8,6 +8,7 @@ from __future__ import print_function
 import numpy
 import theano
 from theano import tensor
+
 T = tensor
 from pylearn2.utils.rng import make_np_rng
 
@@ -15,16 +16,18 @@ from pylearn2.utils.rng import make_np_rng
 theano.config.warn.sum_div_dimshuffle_bug = False
 
 if 0:
-    print('WARNING: using SLOW rng')
-    RandomStreams = tensor.shared_randomstreams.RandomStreams
+	print('WARNING: using SLOW rng')
+	RandomStreams = tensor.shared_randomstreams.RandomStreams
 else:
-    import theano.sandbox.rng_mrg
-    RandomStreams = theano.sandbox.rng_mrg.MRG_RandomStreams
+	import theano.sandbox.rng_mrg
+
+	RandomStreams = theano.sandbox.rng_mrg.MRG_RandomStreams
 
 from pylearn2.expr.activations import rescaled_softmax
 
+
 class Corruptor(object):
-    """
+	"""
     .. todo::
 
         WRITEME
@@ -39,15 +42,15 @@ class Corruptor(object):
         used to initialize a `RandomStreams`.
     """
 
-    def __init__(self, corruption_level, rng=2001):
-        # The default rng should be build in a deterministic way
-        rng = make_np_rng(rng, which_method=['randn', 'randint'])
-        seed = int(rng.randint(2 ** 30))
-        self.s_rng = RandomStreams(seed)
-        self.corruption_level = corruption_level
+	def __init__(self, corruption_level, rng=2001):
+		# The default rng should be build in a deterministic way
+		rng = make_np_rng(rng, which_method=['randn', 'randint'])
+		seed = int(rng.randint(2 ** 30))
+		self.s_rng = RandomStreams(seed)
+		self.corruption_level = corruption_level
 
-    def __call__(self, inputs):
-        """
+	def __call__(self, inputs):
+		"""
         (Symbolically) corrupt the inputs with a noise process.
 
         Parameters
@@ -63,13 +66,13 @@ class Corruptor(object):
             Theano symbolic(s) representing the corresponding corrupted
             inputs.
         """
-        if isinstance(inputs, tensor.Variable):
-            return self._corrupt(inputs)
-        else:
-            return [self._corrupt(inp) for inp in inputs]
+		if isinstance(inputs, tensor.Variable):
+			return self._corrupt(inputs)
+		else:
+			return [self._corrupt(inp) for inp in inputs]
 
-    def _corrupt(self, x):
-        """
+	def _corrupt(self, x):
+		"""
         Corrupts a single tensor_like object.
 
         Parameters
@@ -89,41 +92,41 @@ class Corruptor(object):
         This is the method that all subclasses should implement. The logic in
         Corruptor.__call__ handles mapping over multiple tensor_like inputs.
         """
-        raise NotImplementedError()
+		raise NotImplementedError()
 
-    def corruption_free_energy(self, corrupted_X, X):
-        """
+	def corruption_free_energy(self, corrupted_X, X):
+		"""
         .. todo::
 
             WRITEME
         """
-        raise NotImplementedError()
+		raise NotImplementedError()
 
 
 class DummyCorruptor(Corruptor):
-    """
+	"""
     .. todo::
 
         WRITEME
     """
 
-    def __call__(self, inputs):
-        """
+	def __call__(self, inputs):
+		"""
         .. todo::
 
             WRITEME
         """
-        return inputs
+		return inputs
 
 
 class BinomialCorruptor(Corruptor):
-    """
+	"""
     A binomial corruptor that sets inputs to 0 with probability
     0 < `corruption_level` < 1.
     """
 
-    def _corrupt(self, x):
-        """
+	def _corrupt(self, x):
+		"""
         Corrupts a single tensor_like object.
 
         Parameters
@@ -138,23 +141,23 @@ class BinomialCorruptor(Corruptor):
         corrupted : tensor_like
             Theano symbolic representing the corresponding corrupted input.
         """
-        return self.s_rng.binomial(
-            size=x.shape,
-            n=1,
-            p=1 - self.corruption_level,
-            dtype=theano.config.floatX
-        ) * x
+		return self.s_rng.binomial(
+			size=x.shape,
+			n=1,
+			p=1 - self.corruption_level,
+			dtype=theano.config.floatX
+		) * x
 
 
 class DropoutCorruptor(BinomialCorruptor):
-    """
+	"""
     Sets inputs to 0 with probability of corruption_level and then
     divides by (1 - corruption_level) to keep expected activation
     constant.
     """
 
-    def _corrupt(self, x):
-        """
+	def _corrupt(self, x):
+		"""
         Corrupts a single tensor_like object.
 
         Parameters
@@ -169,16 +172,16 @@ class DropoutCorruptor(BinomialCorruptor):
         corrupted : tensor_like
             Theano symbolic representing the corresponding corrupted input.
         """
-        # for stability
-        if self.corruption_level < 1e-5:
-            return x
+		# for stability
+		if self.corruption_level < 1e-5:
+			return x
 
-        dropped = super(DropoutCorruptor, self)._corrupt(x)
-        return 1.0 / (1.0 - self.corruption_level) * dropped
+		dropped = super(DropoutCorruptor, self)._corrupt(x)
+		return 1.0 / (1.0 - self.corruption_level) * dropped
 
 
 class GaussianCorruptor(Corruptor):
-    """
+	"""
     A Gaussian corruptor transforms inputs by adding zero mean isotropic
     Gaussian noise.
 
@@ -188,12 +191,12 @@ class GaussianCorruptor(Corruptor):
     rng : WRITEME
     """
 
-    def __init__(self, stdev, rng=2001):
-        super(GaussianCorruptor, self).__init__(corruption_level=stdev,
-                                                rng=rng)
+	def __init__(self, stdev, rng=2001):
+		super(GaussianCorruptor, self).__init__(corruption_level=stdev,
+												rng=rng)
 
-    def _corrupt(self, x):
-        """
+	def _corrupt(self, x):
+		"""
         Corrupts a single tensor_like object.
 
         Parameters
@@ -208,38 +211,39 @@ class GaussianCorruptor(Corruptor):
         corrupted : tensor_like
             Theano symbolic representing the corresponding corrupted input.
         """
-        noise = self.s_rng.normal(
-            size=x.shape,
-            avg=0.,
-            std=self.corruption_level,
-            dtype=theano.config.floatX
-        )
+		noise = self.s_rng.normal(
+			size=x.shape,
+			avg=0.,
+			std=self.corruption_level,
+			dtype=theano.config.floatX
+		)
 
-        return noise + x
+		return noise + x
 
-    def corruption_free_energy(self, corrupted_X, X):
-        """
+	def corruption_free_energy(self, corrupted_X, X):
+		"""
         .. todo::
 
             WRITEME
         """
-        axis = range(1, len(X.type.broadcastable))
+		axis = range(1, len(X.type.broadcastable))
 
-        rval = (T.sum(T.sqr(corrupted_X - X), axis=axis) /
-                (2. * (self.corruption_level ** 2.)))
-        assert len(rval.type.broadcastable) == 1
-        return rval
+		rval = (T.sum(T.sqr(corrupted_X - X), axis=axis) /
+				(2. * (self.corruption_level ** 2.)))
+		assert len(rval.type.broadcastable) == 1
+		return rval
 
 
 class SaltPepperCorruptor(Corruptor):
-    """
+	"""
     Corrupts the input with salt and pepper noise.
 
     Sets some elements of the tensor to 0 or 1. Only really makes sense
     to use on binary valued matrices.
     """
-    def _corrupt(self, x):
-        """
+
+	def _corrupt(self, x):
+		"""
         Corrupts a single tensor_like object.
 
         Parameters
@@ -254,29 +258,30 @@ class SaltPepperCorruptor(Corruptor):
         corrupted : tensor_like
             Theano symbolic representing the corresponding corrupted input.
         """
-        a = self.s_rng.binomial(
-            size=x.shape,
-            p=(1 - self.corruption_level),
-            dtype=theano.config.floatX
-        )
+		a = self.s_rng.binomial(
+			size=x.shape,
+			p=(1 - self.corruption_level),
+			dtype=theano.config.floatX
+		)
 
-        b = self.s_rng.binomial(
-            size=x.shape,
-            p=0.5,
-            dtype=theano.config.floatX
-        )
+		b = self.s_rng.binomial(
+			size=x.shape,
+			p=0.5,
+			dtype=theano.config.floatX
+		)
 
-        c = T.eq(a, 0) * b
-        return x * a + c
+		c = T.eq(a, 0) * b
+		return x * a + c
 
 
 class OneHotCorruptor(Corruptor):
-    """
+	"""
     Corrupts a one-hot vector by changing active element with some
     probability.
     """
-    def _corrupt(self, x):
-        """
+
+	def __corrupt(self, x):
+		"""
         Corrupts a single tensor_like object.
 
         Parameters
@@ -291,33 +296,47 @@ class OneHotCorruptor(Corruptor):
         corrupted : tensor_like
             Theano symbolic representing the corresponding corrupted input.
         """
-        num_examples = x.shape[0]
-        num_classes = x.shape[1]
+		num_examples = x.shape[0]
+		num_classes = x.shape[1]
 
-        keep_mask = T.addbroadcast(
-            self.s_rng.binomial(
-                size=(num_examples, 1),
-                p=1 - self.corruption_level,
-                dtype='int8'
-            ),
-            1
-        )
+		keep_mask = T.addbroadcast(
+			self.s_rng.binomial(
+				size=(num_examples, 1),
+				p=1 - self.corruption_level,
+				dtype='int8'
+			),
+			1
+		)
 
-        # generate random one-hot matrix
-        pvals = T.alloc(1.0 / num_classes, num_classes)
-        one_hot = self.s_rng.multinomial(size=(num_examples,), pvals=pvals)
+		# generate random one-hot matrix
+		pvals = T.alloc(1.0 / num_classes, num_classes)
+		one_hot = self.s_rng.multinomial(size=(num_examples,), pvals=pvals)
 
-        return keep_mask * x + (1 - keep_mask) * one_hot
+		return keep_mask * x + (1 - keep_mask) * one_hot
+
+	def _corrupt(self, x):
+		num_examples = x.shape[0]
+		num_classes = x.shape[1]
+		result = T.zeros(x.shape)
+		ix = T.cast(self.s_rng.uniform((num_examples,), low=0.0, high=num_classes), 'int32')
+
+		def set_one_randomly(v, ix):
+			return T.inc_subtensor(v[ix], 1)
+
+		return theano.map(
+			fn=set_one_randomly,
+			sequences=[result, ix]
+		)[0]
 
 class SmoothOneHotCorruptor(Corruptor):
-    """
+	"""
     Corrupts a one-hot vector in a way that preserves some information.
 
     This adds Gaussian noise to a vector and then computes the softmax.
     """
 
-    def _corrupt(self, x):
-        """
+	def _corrupt(self, x):
+		"""
         Corrupts a single tensor_like object.
 
         Parameters
@@ -332,29 +351,29 @@ class SmoothOneHotCorruptor(Corruptor):
         corrupted : tensor_like
             Theano symbolic representing the corresponding corrupted input.
         """
-        noise = self.s_rng.normal(
-            size=x.shape,
-            avg=0.,
-            std=self.corruption_level,
-            dtype=theano.config.floatX
-        )
+		noise = self.s_rng.normal(
+			size=x.shape,
+			avg=0.,
+			std=self.corruption_level,
+			dtype=theano.config.floatX
+		)
 
-        return rescaled_softmax(x + noise)
+		return rescaled_softmax(x + noise)
 
 
 class BinomialSampler(Corruptor):
-    """
+	"""
     .. todo::
 
         WRITEME
     """
 
-    def __init__(self, *args, **kwargs):
-        # pass up a 0 because corruption_level is not relevant here
-        super(BinomialSampler, self).__init__(0, *args, **kwargs)
+	def __init__(self, *args, **kwargs):
+		# pass up a 0 because corruption_level is not relevant here
+		super(BinomialSampler, self).__init__(0, *args, **kwargs)
 
-    def _corrupt(self, x):
-        """
+	def _corrupt(self, x):
+		"""
         Corrupts a single tensor_like object.
 
         Parameters
@@ -369,23 +388,23 @@ class BinomialSampler(Corruptor):
         corrupted : tensor_like
             Theano symbolic representing the corresponding corrupted input.
         """
-        return self.s_rng.binomial(size=x.shape, p=x,
-                                   dtype=theano.config.floatX)
+		return self.s_rng.binomial(size=x.shape, p=x,
+								   dtype=theano.config.floatX)
 
 
 class MultinomialSampler(Corruptor):
-    """
+	"""
     .. todo::
 
         WRITEME
     """
 
-    def __init__(self, *args, **kwargs):
-        # corruption_level isn't relevant here
-        super(MultinomialSampler, self).__init__(0, *args, **kwargs)
+	def __init__(self, *args, **kwargs):
+		# corruption_level isn't relevant here
+		super(MultinomialSampler, self).__init__(0, *args, **kwargs)
 
-    def _corrupt(self, x):
-        """
+	def _corrupt(self, x):
+		"""
         Treats each row in matrix as a multinomial trial.
 
         Parameters
@@ -401,12 +420,12 @@ class MultinomialSampler(Corruptor):
             multinomial trial defined by the probabilities of that row
             in x.
         """
-        normalized = x / x.sum(axis=1, keepdims=True)
-        return self.s_rng.multinomial(pvals=normalized, dtype=theano.config.floatX)
+		normalized = x / x.sum(axis=1, keepdims=True)
+		return self.s_rng.multinomial(pvals=normalized, dtype=theano.config.floatX)
 
 
 class ComposedCorruptor(Corruptor):
-    """
+	"""
     .. todo::
 
         WRITEME
@@ -424,13 +443,13 @@ class ComposedCorruptor(Corruptor):
     standard fields for Corruptors.
     """
 
-    def __init__(self, *corruptors):
-        # pass up the 0 for corruption_level (not relevant here)
-        assert len(corruptors) >= 1
-        self._corruptors = corruptors
+	def __init__(self, *corruptors):
+		# pass up the 0 for corruption_level (not relevant here)
+		assert len(corruptors) >= 1
+		self._corruptors = corruptors
 
-    def _corrupt(self, x):
-        """
+	def _corrupt(self, x):
+		"""
         Corrupts a single tensor_like object.
 
         Parameters
@@ -445,17 +464,48 @@ class ComposedCorruptor(Corruptor):
         corrupted : tensor_like
             Theano symbolic representing the corresponding corrupted input.
         """
-        result = x
-        for c in reversed(self._corruptors):
-            result = c(result)
-        return result
+		result = x
+		for c in reversed(self._corruptors):
+			result = c(result)
+		return result
+
+
+class SubwindowCorruptor(Corruptor):
+	"""
+	This will corrupt a sub-vector in an example, with the
+	corruptor given. Outside of the subvector,
+	it leaves everything the same
+
+	Note: We're assuming that the input is a matrix, where rows
+	are examples.
+	"""
+	def __init__(self, corruptor, window_start, window_end, rng=2001):
+		# Corruption level is ignored by the superclass.
+		super(SubwindowCorruptor, self).__init__(0, rng=rng)
+		self.corruptor = corruptor
+		self.window_start = window_start
+		self.window_end = window_end
+
+	def _corrupt(self, x):
+		sub_vector = x[:, self.window_start:self.window_end]
+		corrupted = self.corruptor._corrupt(sub_vector)
+		result = T.set_subtensor(x[:, self.window_start:self.window_end], corrupted)
+		return result
 
 
 ##################################################
 def get(str):
-    """ Evaluate str into a corruptor object, if it exists """
-    obj = globals()[str]
-    if issubclass(obj, Corruptor):
-        return obj
-    else:
-        raise NameError(str)
+	""" Evaluate str into a corruptor object, if it exists """
+	obj = globals()[str]
+	if issubclass(obj, Corruptor):
+		return obj
+	else:
+		raise NameError(str)
+
+
+
+if __name__=='__main__':
+	c = OneHotCorruptor(0.0)
+	m = tensor.as_tensor([[1,2,3],[4,5,6], [7,8,9]])
+	f = theano.function([], c._corrupt(m))
+	print(f())

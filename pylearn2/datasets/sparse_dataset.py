@@ -8,6 +8,7 @@ import functools
 from pylearn2.datasets.dataset import Dataset
 from pylearn2.utils import wraps
 import logging
+import cPickle as pickle
 import numpy
 import warnings
 try:
@@ -54,22 +55,25 @@ class SparseDataset(Dataset):
         self.load_path = load_path
         self.y = None
 
-        if self.load_path is not None:
-            if zipped_npy is True:
-                logger.info('... loading sparse data set from a zip npy file')
-                self.X = scipy.sparse.csr_matrix(
-                    numpy.load(gzip.open(load_path)), dtype=floatX)
-            else:
-                logger.info('... loading sparse data set from a npy file')
-                self.X = scipy.sparse.csr_matrix(
-                    numpy.load(load_path).item(), dtype=floatX)
-        else:
-            logger.info('... building from given sparse dataset')
-            self.X = from_scipy_sparse_dataset
-            if not scipy.sparse.issparse(from_scipy_sparse_dataset):
-                msg = "from_scipy_sparse_dataset is not sparse : %s" \
-                      % type(self.X)
-                raise TypeError(msg)
+	logger.info('... loading sparse data from a pickle')
+	with open(load_path) as f:
+		self.X = pickle.load(f)
+        #if self.load_path is not None:
+            #if zipped_npy is True:
+                #logger.info('... loading sparse data set from a zip npy file')
+                #self.X = scipy.sparse.csr_matrix(
+                    #numpy.load(gzip.open(load_path)), dtype=floatX)
+            #else:
+                #logger.info('... loading sparse data set from a npy file')
+                #self.X = scipy.sparse.csr_matrix(
+                    #numpy.load(load_path).item(), dtype=floatX)
+        #else:
+            #logger.info('... building from given sparse dataset')
+            #self.X = from_scipy_sparse_dataset
+            #if not scipy.sparse.issparse(from_scipy_sparse_dataset):
+                #msg = "from_scipy_sparse_dataset is not sparse : %s" \
+                      #% type(self.X)
+                #raise TypeError(msg)
 
         X_space = VectorSpace(dim=self.X.shape[1], sparse=True)
         self.X_space = X_space

@@ -1,0 +1,43 @@
+!obj:pylearn2.train.Train {
+  #"dataset": !obj:pylearn2.datasets.sparse_dataset.SparseDataset &dataset {
+  #    load_path: /home/riri/tmp/windows.pkl
+  #},
+  "dataset": !obj:pylearn2.datasets.hdf5.HDF5Dataset &dataset {
+    filename: /home/riri/tmp/windows.hd5,
+    X: dataset
+  },
+  "model": !obj:pylearn2.blocks.StackedModelBlocks {
+    layers: &list [
+      !obj:pylearn2.models.onehotvectorizer.MultiAppliedModel {
+        n_applications: 5,
+        call_target: '__call__',
+        model: !obj:pylearn2.models.onehotvectorizer.OneHotVectorizerTransform {
+          onehot_vector_length: 1000,
+          output_vector_width: 300
+        }
+      },
+      !obj:pylearn2.models.onehotvectorizer.SimpleLayerTransform {
+        n_visible: 1500,
+        n_hidden: 400,
+        function: 'tanh'
+      }
+    ],
+  },
+  "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
+    "learning_rate" : 1e-2,
+    "batch_size" : 211,
+    "monitoring_dataset" : *dataset,
+    "cost" : !obj:pylearn2.costs.wordvec_cost.CorruptingWordVecCost {
+      n_visible: 1000,
+      n_windows: 5,
+      n_hidden: 400
+    },
+    "termination_criterion": !obj:pylearn2.termination_criteria.MonitorBased {
+      "channel_name": objective,
+      prop_decrease: 0.1,
+      "N": 1
+    }
+  },
+  "save_path": "/home/riri/tmp/model.pkl",
+  "save_freq": 1
+}

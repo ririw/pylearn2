@@ -1,0 +1,37 @@
+!obj:pylearn2.train.Train {
+    "dataset": !obj:pylearn2.datasets.sparse_dataset.SparseDataset &dataset {
+        load_path: /home/riri/tmp/windows.pkl
+    },
+    # "dataset": !obj:pylearn2.datasets.hdf5.HDF5Dataset &dataset {
+    #         filename: /home/riri/tmp/windows.pkl,
+    #         X: dataset
+    # },
+    "model": !obj:pylearn2.models.autoencoder.DenoisingAutoencoder {
+        "nvis" : 25000,
+        "nhid" : 2500,
+        "irange" : 0.5,
+        "corruptor": !obj:pylearn2.corruption.SubwindowCorruptor {
+          window_start: 15000,
+          window_end: 20000,
+          corruptor: !obj:pylearn2.corruption.OneHotCorruptor {
+            corruption_level: 1 # Not actually used.
+          }
+        },
+        "act_enc": "tanh",
+        "act_dec": "tanh",    # Linear activation on the decoder side.
+    },
+    "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
+        "learning_rate" : 1e-2,
+        "batch_size" : 500,
+        "monitoring_dataset" : *dataset,
+        "cost" : !obj:pylearn2.costs.autoencoder.MeanSquaredReconstructionError {},
+        "termination_criterion": !obj:pylearn2.termination_criteria.MonitorBased {
+          "channel_name": objective,
+          prop_decrease: 0.1,
+          "N": 1
+        },
+
+    },
+    "save_path": "/home/riri/tmp/model.pkl",
+    "save_freq": 1
+}

@@ -1,0 +1,19 @@
+!obj:pylearn2.train.Train {
+    "dataset": !obj:pylearn2.datasets.sparse_dataset.SparseDataset &dataset {
+        load_path: /home/riri/tmp/windows.pkl
+    },
+    "model": !obj:pylearn2.models.wordvector.SubVectorModel {
+        "input_width" : 10000,
+        "output_width" : 250,
+        "num_subvectors" : 5
+    },
+    "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
+        "learning_rate" : 1e-3,
+        "batch_size" : 10,
+        "monitoring_dataset" : *dataset,
+        "cost" : !obj:pylearn2.costs.autoencoder.MeanSquaredReconstructionError {},
+        "termination_criterion" : !obj:pylearn2.termination_criteria.EpochCounter {
+            "max_epochs": 20,
+        },
+    }
+}
