@@ -30,6 +30,7 @@ from pylearn2.linear.matrixmul import MatrixMul
 from pylearn2.model_extensions.norm_constraint import MaxL2FilterNorm
 from pylearn2.models.model import Model
 from pylearn2.monitor import get_monitor_doc
+from pylearn2.expr.nnet import arg_of_softmax
 from pylearn2.expr.nnet import pseudoinverse_softmax_numpy
 from pylearn2.space import CompositeSpace
 from pylearn2.space import Conv2DSpace
@@ -296,9 +297,16 @@ class Layer(LayerBase):
 
     def get_weights_format(self):
         """
-        .. todo::
+        Returns a description of how to interpret the weights of the layer.
 
-            WRITEME
+        Returns
+        -------
+        format: tuple
+            Either ('v', 'h') or  ('h', 'v').
+            ('v', 'h') means a weight matrix of shape
+            (num visible units, num hidden units),
+            while ('h', 'v') means the transpose of it.
+
         """
         raise NotImplementedError
 
@@ -1130,7 +1138,9 @@ class Softmax(Layer):
         number of targets here so that an IndexSpace of the proper dimension
         can be used as the target space. This allows the softmax to compute
         the cost much more quickly than if it needs to convert the targets
-        into a VectorSpace.
+        into a VectorSpace. With binary_target_dim>1, you can use one layer
+        to simultaneously predict a bag of words (i.e. order is not important,
+        the same element can be included more than once).
     non_redundant : bool
         If True, learns only n_classes - 1 biases and weight vectors
     """
@@ -1161,7 +1171,9 @@ class Softmax(Layer):
         del self.self
         del self.init_bias_target_marginals
 
-        assert isinstance(n_classes, py_integer_types)
+        if not isinstance(n_classes, py_integer_types):
+            raise TypeError("n_classes is of type %s, but must be integer" %
+                            type(n_classes))
 
         if binary_target_dim is not None:
             assert isinstance(binary_target_dim, py_integer_types)
@@ -1256,13 +1268,17 @@ class Softmax(Layer):
                                      ('max_max_class', mx.max()),
                                      ('min_max_class', mx.min())]))
 
-            if targets is not None:
-                y_hat = T.argmax(state, axis=1)
-                y = (targets.reshape(y_hat.shape) if self._has_binary_target
-                     else T.argmax(targets, axis=1))
-                misclass = T.neq(y, y_hat).mean()
-                misclass = T.cast(misclass, config.floatX)
-                rval['misclass'] = misclass
+            if (targets is not None):
+                if ((not self._has_binary_target) or
+                        self.binary_target_dim == 1):
+                    # if binary_target_dim>1, the misclass rate is ill-defined
+                    y_hat = T.argmax(state, axis=1)
+                    y = (targets.reshape(y_hat.shape)
+                         if self._has_binary_target
+                         else T.argmax(targets, axis=1))
+                    misclass = T.neq(y, y_hat).mean()
+                    misclass = T.cast(misclass, config.floatX)
+                    rval['misclass'] = misclass
                 rval['nll'] = self.cost(Y_hat=state, Y=targets)
 
         return rval
@@ -1381,7 +1397,6 @@ class Softmax(Layer):
 
             Z = T.dot(state_below, self.W) + b
 
-        Z.tag.softmax_input = self.layer_name
         if self.non_redundant:
             zeros = T.alloc(0., Z.shape[0], 1)
             Z = T.concatenate((zeros, Z), axis=1)
@@ -1396,16 +1411,7 @@ class Softmax(Layer):
 
     def _cost(self, Y, Y_hat):
 
-        assert hasattr(Y_hat, 'owner')
-        owner = Y_hat.owner
-        z = None
-        while owner is not None:
-            if isinstance(owner.op, T.nnet.Softmax):
-                z, = owner.inputs
-                break
-            else:
-                owner = owner.inputs[0].owner
-        assert getattr(z.tag, 'softmax_input', None) == self.layer_name
+        z = arg_of_softmax(Y_hat)
         assert z.ndim == 2
 
         z = z - z.max(axis=1).dimshuffle(0, 'x')
@@ -1418,9 +1424,19 @@ class Softmax(Layer):
             # happen on the GPU rather than CPU.
 
             flat_Y = Y.flatten()
+            flat_Y.name = 'flat_Y'
             flat_log_prob = log_prob.flatten()
-            flat_indices = flat_Y + T.arange(Y.shape[0]) * self.n_classes
-            log_prob_of = flat_log_prob[flat_indices].dimshuffle(0, 'x')
+            flat_log_prob.name = 'flat_log_prob'
+            range_ = T.arange(Y.shape[0])
+            if self.binary_target_dim > 1:
+                # because of an error in optimization (local_useless_tile)
+                # when tiling with (1, 1)
+                range_ = T.tile(range_.dimshuffle(0, 'x'),
+                                (1, self.binary_target_dim)).flatten()
+            flat_indices = flat_Y + range_ * self.n_classes
+            flat_indices.name = 'flat_indices'
+            log_prob_of = flat_log_prob[flat_indices].reshape(Y.shape, ndim=2)
+            log_prob_of.name = 'log_prob_of'
 
         else:
             log_prob_of = (Y * log_prob)
@@ -4319,20 +4335,8 @@ class FlattenerLayer(Layer):
                                       state=None, targets=None):
 
         raw_space = self.raw_layer.get_output_space()
-
-        if isinstance(raw_space, CompositeSpace):
-            # Pick apart the Join that fprop used to make state.
-            assert hasattr(state, 'owner')
-            owner = state.owner
-            assert owner is not None
-            assert str(owner.op) == 'Join'
-            # First input to join op in the axis.
-            raw_state = tuple(owner.inputs[1:])
-            raw_space.validate(raw_state)
-            state = raw_state
-        else:
-            # Format state as layer output space.
-            state = self.get_output_space().format_as(state, raw_space)
+        state = raw_space.undo_format_as(state,
+                                         self.get_output_space())
 
         if targets is not None:
             targets = self.get_target_space().format_as(
@@ -4388,22 +4392,9 @@ class FlattenerLayer(Layer):
 
         raw_space = self.raw_layer.get_output_space()
         target_space = self.output_space
-        raw_Y = target_space.format_as(Y, raw_space)
 
-        if isinstance(raw_space, CompositeSpace):
-            # Pick apart the Join that our fprop used to make Y_hat
-            assert hasattr(Y_hat, 'owner')
-            owner = Y_hat.owner
-            assert owner is not None
-            assert str(owner.op) == 'Join'
-            # first input to join op is the axis
-            raw_Y_hat = tuple(owner.inputs[1:])
-        else:
-            # To implement this generally, we'll need to give Spaces an
-            # undo_format or something. You can't do it with format_as
-            # in the opposite direction because Layer.cost needs to be
-            # able to assume that Y_hat is the output of fprop
-            raise NotImplementedError()
+        raw_Y = target_space.format_as(Y, raw_space)
+        raw_Y_hat = raw_space.undo_format_as(Y_hat, target_space)
         raw_space.validate(raw_Y_hat)
 
         return self.raw_layer.cost(raw_Y, raw_Y_hat)
