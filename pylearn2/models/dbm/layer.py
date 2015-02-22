@@ -2489,7 +2489,7 @@ class ConvMaxPool(HiddenLayer):
     """
 
     def __init__(self,
-             output_channels,
+            output_channels,
             kernel_rows,
             kernel_cols,
             pool_rows,
@@ -2502,6 +2502,7 @@ class ConvMaxPool(HiddenLayer):
             init_bias = 0.,
             border_mode = 'valid',
             output_axes = ('b', 'c', 0, 1)):
+        super(ConvMaxPool, self).__init__()
         self.__dict__.update(locals())
         del self.self
 
