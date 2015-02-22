@@ -39,9 +39,8 @@ class SimpleSplittingTokenizer(object):
 # tokenizer = nltk.tokenize.treebank.TreebankWordTokenizer()
 tokenizer = SimpleSplittingTokenizer()
 
-vocab_size = int(1e3)
 window_size = 5
-chunk_size = int(1e4)
+chunk_size = int(1e5)
 
 
 def iterate_file_chunks(input_file_handle):
@@ -86,6 +85,7 @@ def write_matrix(dataset, window_vectors):
 
 if __name__ == '__main__':
 	in_filename = sys.argv[1]
+	vocab_size = int(sys.argv[3])
 
 	logging.info('Starting!')
 	with open(in_filename) as f:

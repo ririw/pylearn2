@@ -11,7 +11,7 @@
       !obj:pylearn2.models.onehotvectorizer.MultiAppliedModel {
         n_applications: 5,
         call_target: '__call__',
-        model: !obj:pylearn2.models.onehotvectorizer.OneHotVectorizerTransform {
+        model: !obj:pylearnf2.models.onehotvectorizer.OneHotVectorizerTransform {
           onehot_vector_length: 1000,
           output_vector_width: 300
         }
@@ -25,7 +25,7 @@
   },
   "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
     "learning_rate" : 1e-2,
-    "batch_size" : 211,
+    "batch_size" : 5000,
     "monitoring_dataset" : *dataset,
     "cost" : !obj:pylearn2.costs.wordvec_cost.CorruptingWordVecCost {
       n_visible: 1000,
