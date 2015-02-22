@@ -1,0 +1,39 @@
+!obj:pylearn2.train.Train {
+  "dataset": !obj:pylearn2.datasets.cifar10.CIFAR10 &dataset {
+    which_set: 'train'
+  },
+  model: !obj:pylearn2.models.dbm.DBM {
+    batch_size: 1000,
+    visible_layer:
+            !obj:pylearn2.models.dbm.layer.GaussianVisLayer {
+              rows: 32,
+              cols: 32,
+              channels: 3,
+            },
+    hidden_layers: [
+      !obj:pylearn2.models.dbm.layer.ConvMaxPool {
+        output_channels: 3,
+        kernel_rows: 5,
+        kernel_cols: 5,
+        pool_rows: 4,
+        pool_cols: 4,
+        layer_name: 'ready layer one',
+        irange: 256
+      }
+    ],
+    niter: 2
+  },
+  "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
+    "learning_rate" : 1e-3,
+    "monitoring_dataset" : *dataset,
+    "termination_criterion": !obj:pylearn2.termination_criteria.EpochCounter {
+      max_epochs: 5
+    },
+    cost: !obj:pylearn2.costs.dbm.VariationalPCD {
+      num_chains: 1000,
+      num_gibbs_steps: 2
+    }
+  },
+  "save_path": "/home/riri/tmp/model.pkl",
+  "save_freq": 1
+}

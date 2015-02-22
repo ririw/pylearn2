@@ -95,6 +95,7 @@ if __name__ == '__main__':
 	logging.info('Generated index...')
 	vector_length = vocab_size*window_size
 	with open(in_filename) as f, h5py.File(sys.argv[2], 'w') as out:
+		out['vocab'] = vocab_index.items()
 		dataset = out.create_dataset('dataset',
 								   (0, vector_length),
 								   maxshape=(None, vector_length),
@@ -114,4 +115,5 @@ if __name__ == '__main__':
 				window_vectors = []
 			data_ix += 1
 		write_matrix(dataset, window_vectors)
+
 

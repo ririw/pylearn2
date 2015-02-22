@@ -29,9 +29,9 @@ class CorruptingWordVecCost(DefaultDataSpecsMixin, Cost):
 		corrupted_outputs = model(corrupted_inputs)[-1]
 		corrupted = tensor.dot(corrupted_outputs, self.U)
 
+		ones = tensor.ones_like(uncorrupted)
 		zeros = tensor.zeros_like(uncorrupted)
-		loss = tensor.sum(tensor.largest(0, 1 - uncorrupted + corrupted))
-		#loss = tensor.sum(inputs - corrupted_inputs)
+		loss = tensor.sum(tensor.largest(zeros, ones - uncorrupted + corrupted))
 
 		return loss
 
